@@ -1,0 +1,602 @@
+--========================================================--
+--                    VOID HUB
+--               Interface Azul - Aimbot & ESP
+--========================================================--
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
+local player = Players.LocalPlayer
+if not player then
+	return
+end
+
+local playerGui = player:WaitForChild("PlayerGui")
+
+--========================================================--
+-- REMOVER VERSÃO ANTERIOR
+--========================================================--
+
+local old = playerGui:FindFirstChild("VOIDHUB")
+if old then
+	old:Destroy()
+end
+
+--========================================================--
+-- URL DA IMAGEM DE FUNDO
+--========================================================--
+
+local BG_IMAGE_URL = "https://cdn.discordapp.com/attachments/1558131947501518908/1559686473832333452/image_1267f55e-1.jpg?ex=6acffab8&is=6acea938&hm=1e51098523063ccc0849877c5eaf593bdf10f5641e7661cdf4c866945fa61e1b&"
+
+--========================================================--
+-- DETECÇÃO DE DISPOSITIVO & TAMANHO ADAPTATIVO
+--========================================================--
+
+local function getAdaptiveSize()
+	local viewport = Camera.ViewportSize
+	if viewport.X <= 600 or viewport.Y <= 500 then
+		return UDim2.fromOffset(260, 380), 12
+	elseif viewport.X <= 1024 or viewport.Y <= 768 then
+		return UDim2.fromOffset(300, 420), 14
+	else
+		return UDim2.fromOffset(320, 450), 15
+	end
+end
+
+--========================================================--
+-- VISUAL (GRADIENTES AZUIS & RGB)
+--========================================================--
+
+local function addCorner(parent, radius)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, radius)
+	corner.Parent = parent
+	return corner
+end
+
+local function borderSequence()
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 90, 180)),
+		ColorSequenceKeypoint.new(0.35, Color3.fromRGB(10, 160, 255)),
+		ColorSequenceKeypoint.new(0.6, Color3.fromRGB(80, 215, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 100, 180))
+	})
+end
+
+local function addGradientStroke(parent, thickness)
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Thickness = thickness
+	stroke.Color = Color3.new(1, 1, 1)
+	stroke.Parent = parent
+
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = borderSequence()
+	gradient.Parent = stroke
+
+	return gradient
+end
+
+--========================================================--
+-- GUI
+--========================================================--
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "VOIDHUB"
+screenGui.ResetOnSpawn = false
+screenGui.DisplayOrder = 999
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+local defaultSize, baseFontSize = getAdaptiveSize()
+
+local menu = Instance.new("Frame")
+menu.Name = "Menu"
+menu.Size = defaultSize
+menu.Position = UDim2.new(0.5, -defaultSize.X.Offset / 2, 0.5, -defaultSize.Y.Offset / 2)
+menu.BackgroundColor3 = Color3.fromRGB(8, 12, 20)
+menu.BackgroundTransparency = 0.2
+menu.BorderSizePixel = 0
+menu.Active = true
+menu.Parent = screenGui
+
+addCorner(menu, 20)
+local outerGradient = addGradientStroke(menu, 2)
+
+-- Fundo de Imagem Ajustado com getcustomasset/writefile para Delta e PC
+local bgImage = Instance.new("ImageLabel")
+bgImage.Name = "Background"
+bgImage.Size = UDim2.new(1, 0, 1, 0)
+bgImage.BackgroundTransparency = 1
+bgImage.ImageTransparency = 0.45
+bgImage.ScaleType = Enum.ScaleType.Crop
+bgImage.Parent = menu
+addCorner(bgImage, 20)
+
+task.spawn(function()
+	pcall(function()
+		if writefile and getcustomasset then
+			local bgFile = "void_hub_bg.jpg"
+			local bgData = game:HttpGet(BG_IMAGE_URL)
+			if bgData then
+				writefile(bgFile, bgData)
+				bgImage.Image = getcustomasset(bgFile)
+			end
+		else
+			bgImage.Image = BG_IMAGE_URL
+		end
+	end)
+end)
+
+--========================================================--
+-- DRAG
+--========================================================--
+
+local dragging = false
+local dragStart
+local startPosition
+
+menu.InputBegan:Connect(function(input)
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1
+		and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+
+	dragging = true
+	dragStart = input.Position
+	startPosition = menu.Position
+
+	input.Changed:Connect(function()
+		if input.UserInputState == Enum.UserInputState.End then
+			dragging = false
+		end
+	end)
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if not dragging then
+		return
+	end
+
+	if input.UserInputType ~= Enum.UserInputType.MouseMovement
+		and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+
+	local delta = input.Position - dragStart
+
+	menu.Position = UDim2.new(
+		startPosition.X.Scale,
+		startPosition.X.Offset + delta.X,
+		startPosition.Y.Scale,
+		startPosition.Y.Offset + delta.Y
+	)
+end)
+
+--========================================================--
+-- HEADER
+--========================================================--
+
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 46)
+header.BackgroundTransparency = 1
+header.Parent = menu
+
+local accent = Instance.new("Frame")
+accent.Size = UDim2.fromOffset(3, 26)
+accent.Position = UDim2.fromOffset(8, 10)
+accent.BackgroundColor3 = Color3.fromRGB(30, 150, 255)
+accent.BorderSizePixel = 0
+accent.Parent = header
+
+addCorner(accent, 2)
+
+local accentGradient = Instance.new("UIGradient")
+accentGradient.Color = borderSequence()
+accentGradient.Parent = accent
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -66, 0, 18)
+title.Position = UDim2.fromOffset(16, 8)
+title.BackgroundTransparency = 1
+title.Text = "VOID HUB"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBlack
+title.TextSize = baseFontSize
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = header
+
+local titleGradient = Instance.new("UIGradient")
+titleGradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(10, 130, 255)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 200, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(200, 240, 255))
+})
+titleGradient.Parent = title
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -66, 0, 13)
+subtitle.Position = UDim2.fromOffset(16, 25)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "VOID HUB • AIMBOT & ESP"
+subtitle.TextColor3 = Color3.fromRGB(120, 215, 255)
+subtitle.TextTransparency = 0.2
+subtitle.Font = Enum.Font.GothamMedium
+subtitle.TextSize = baseFontSize - 5
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = header
+
+--========================================================--
+-- MINIMIZAR
+--========================================================--
+
+local minimize = Instance.new("TextButton")
+minimize.Size = UDim2.fromOffset(24, 24)
+minimize.Position = UDim2.new(1, -42, 0.5, -12)
+minimize.BackgroundColor3 = Color3.fromRGB(10, 30, 60)
+minimize.BackgroundTransparency = 0.1
+minimize.AutoButtonColor = false
+minimize.BorderSizePixel = 0
+minimize.Font = Enum.Font.GothamBlack
+minimize.Text = "-"
+minimize.TextSize = 14
+minimize.TextColor3 = Color3.new(1, 1, 1)
+minimize.Parent = header
+
+addCorner(minimize, 8)
+local minimizeGradient = addGradientStroke(minimize, 1.5)
+
+--========================================================--
+-- CONTEÚDO
+--========================================================--
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -28, 1, -54)
+content.Position = UDim2.fromOffset(14, 48)
+content.BackgroundTransparency = 1
+content.Parent = menu
+
+local animatedGradients = {}
+
+--========================================================--
+-- CRIAR INTERFACE DE BOTÕES / CONTROLES
+--========================================================--
+
+local function makeToggle(name, text, y, callback)
+	local card = Instance.new("Frame")
+	card.Name = name
+	card.Size = UDim2.new(1, 0, 0, 44)
+	card.Position = UDim2.fromOffset(0, y)
+	card.BackgroundColor3 = Color3.fromRGB(12, 22, 38)
+	card.BackgroundTransparency = 0.15
+	card.BorderSizePixel = 0
+	card.Parent = content
+
+	addCorner(card, 12)
+	local cardGradient = addGradientStroke(card, 1.2)
+	table.insert(animatedGradients, cardGradient)
+
+	local button = Instance.new("TextButton")
+	button.Name = "Button"
+	button.Size = UDim2.new(1, 0, 1, 0)
+	button.BackgroundTransparency = 1
+	button.Text = ""
+	button.AutoButtonColor = false
+	button.Parent = card
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -60, 1, 0)
+	label.Position = UDim2.fromOffset(14, 0)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = Color3.fromRGB(235, 245, 255)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = baseFontSize - 2
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = button
+
+	local indicator = Instance.new("Frame")
+	indicator.Size = UDim2.fromOffset(36, 20)
+	indicator.Position = UDim2.new(1, -46, 0.5, -10)
+	indicator.BackgroundColor3 = Color3.fromRGB(30, 40, 60)
+	indicator.BorderSizePixel = 0
+	indicator.Parent = button
+	addCorner(indicator, 10)
+
+	local circle = Instance.new("Frame")
+	circle.Size = UDim2.fromOffset(16, 16)
+	circle.Position = UDim2.new(0, 2, 0.5, -8)
+	circle.BackgroundColor3 = Color3.fromRGB(180, 200, 220)
+	circle.BorderSizePixel = 0
+	circle.Parent = indicator
+	addCorner(circle, 8)
+
+	local enabled = false
+	button.Activated:Connect(function()
+		enabled = not enabled
+		
+		TweenService:Create(indicator, TweenInfo.new(0.2), {
+			BackgroundColor3 = enabled and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(30, 40, 60)
+		}):Play()
+
+		TweenService:Create(circle, TweenInfo.new(0.2), {
+			Position = enabled and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
+			BackgroundColor3 = enabled and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(180, 200, 220)
+		}):Play()
+
+		if callback then
+			callback(enabled)
+		end
+	end)
+
+	return card
+end
+
+local function makeSlider(name, text, y, min, max, default, callback)
+	local card = Instance.new("Frame")
+	card.Name = name
+	card.Size = UDim2.new(1, 0, 0, 52)
+	card.Position = UDim2.fromOffset(0, y)
+	card.BackgroundColor3 = Color3.fromRGB(12, 22, 38)
+	card.BackgroundTransparency = 0.15
+	card.BorderSizePixel = 0
+	card.Parent = content
+
+	addCorner(card, 12)
+	local cardGradient = addGradientStroke(card, 1.2)
+	table.insert(animatedGradients, cardGradient)
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -20, 0, 20)
+	label.Position = UDim2.fromOffset(12, 6)
+	label.BackgroundTransparency = 1
+	label.Text = text .. ": " .. default
+	label.TextColor3 = Color3.fromRGB(235, 245, 255)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = baseFontSize - 3
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = card
+
+	local sliderBar = Instance.new("Frame")
+	sliderBar.Size = UDim2.new(1, -24, 0, 6)
+	sliderBar.Position = UDim2.fromOffset(12, 32)
+	sliderBar.BackgroundColor3 = Color3.fromRGB(20, 35, 60)
+	sliderBar.BorderSizePixel = 0
+	sliderBar.Parent = card
+	addCorner(sliderBar, 3)
+
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+	fill.BackgroundColor3 = Color3.fromRGB(0, 160, 255)
+	fill.BorderSizePixel = 0
+	fill.Parent = sliderBar
+	addCorner(fill, 3)
+
+	local draggingSlider = false
+	local function updateSlider(input)
+		local pos = math.clamp((input.Position.X - sliderBar.AbsolutePosition.X) / sliderBar.AbsoluteSize.X, 0, 1)
+		local val = math.floor(min + (max - min) * pos)
+		fill.Size = UDim2.new(pos, 0, 1, 0)
+		label.Text = text .. ": " .. val
+		if callback then
+			callback(val)
+		end
+	end
+
+	sliderBar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			draggingSlider = true
+			updateSlider(input)
+		end
+	end)
+
+	UserInputService.InputEnded:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			draggingSlider = false
+		end
+	end)
+
+	UserInputService.InputChanged:Connect(function(input)
+		if draggingSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			updateSlider(input)
+		end
+	end)
+
+	return card
+end
+
+--========================================================--
+-- VARIÁVEIS DE CONFIGURAÇÃO (AIMBOT & ESP)
+--========================================================--
+
+local aimbotEnabled = false
+local espEnabled = false
+local fovRadius = 120
+
+-- FOV Circle centralizado
+local fovDrawing = Drawing.new("Circle")
+fovDrawing.Visible = false
+fovDrawing.Filled = false
+fovDrawing.Thickness = 2
+fovDrawing.Color = Color3.fromRGB(0, 160, 255)
+fovDrawing.Radius = fovRadius
+fovDrawing.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+-- Criar Controles no Menu
+makeToggle("AimbotToggle", "ATIVAR AIMBOT", 0, function(state)
+	aimbotEnabled = state
+	fovDrawing.Visible = state
+end)
+
+makeSlider("FovSlider", "TAMANHO DO FOV", 50, 50, 400, 120, function(val)
+	fovRadius = val
+	fovDrawing.Radius = val
+end)
+
+makeToggle("EspToggle", "ATIVAR ESP (NOME + HITBOX)", 108, function(state)
+	espEnabled = state
+end)
+
+-- Status
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, 0, 0, 18)
+status.Position = UDim2.fromOffset(0, 360)
+status.BackgroundTransparency = 1
+status.Text = "VOID HUB • PRONTO"
+status.TextColor3 = Color3.fromRGB(120, 215, 255)
+status.Font = Enum.Font.GothamBold
+status.TextSize = 10
+status.TextXAlignment = Enum.TextXAlignment.Center
+status.Parent = content
+
+--========================================================--
+-- LÓGICA DO AIMBOT (SUAVE E SEM TREMEDEIRA)
+--========================================================--
+
+local function getClosestPlayerToCursor()
+	local closestPlayer = nil
+	local shortestDistance = fovRadius
+	local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+			local head = p.Character:FindFirstChild("Head") or p.Character.HumanoidRootPart
+			local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+
+			if onScreen then
+				local mouseDist = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+				if mouseDist < shortestDistance then
+					shortestDistance = mouseDist
+					closestPlayer = p
+				end
+			end
+		end
+	end
+
+	return closestPlayer
+end
+
+RunService.RenderStepped:Connect(function(dt)
+	fovDrawing.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+	if aimbotEnabled then
+		local target = getClosestPlayerToCursor()
+		if target and target.Character and target.Character:FindFirstChild("Head") then
+			local head = target.Character.Head
+			local targetCFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+			Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, math.clamp(dt * 15, 0.1, 1))
+		end
+	end
+end)
+
+--========================================================--
+-- LÓGICA DO ESP (GROSSO, NOME + DISTÂNCIA + GOV)
+--========================================================--
+
+local espCache = {}
+
+local function createESP(p)
+	local box = Drawing.new("Square")
+	box.Visible = false
+	box.Thickness = 2.5
+	box.Filled = false
+
+	local text = Drawing.new("Text")
+	text.Visible = false
+	text.Size = 14
+	text.Center = true
+	text.Outline = true
+	text.Color = Color3.new(1, 1, 1)
+
+	espCache[p] = {Box = box, Text = text}
+end
+
+local function removeESP(p)
+	if espCache[p] then
+		espCache[p].Box:Remove()
+		espCache[p].Text:Remove()
+		espCache[p] = nil
+	end
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+	if p ~= player then createESP(p) end
+end
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
+
+--========================================================--
+-- MINIMIZAR
+--========================================================--
+
+local expandedSize = defaultSize
+local collapsedSize = UDim2.fromOffset(defaultSize.X.Offset, 50)
+local collapsed = false
+
+minimize.Activated:Connect(function()
+	collapsed = not collapsed
+	minimize.Text = collapsed and "+" or "-"
+	content.Visible = not collapsed
+
+	TweenService:Create(menu, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut), {
+		Size = collapsed and collapsedSize or expandedSize
+	}):Play()
+end)
+
+--========================================================--
+-- ANIMAÇÃO RGB E RENDERIZAÇÃO DO ESP
+--========================================================--
+
+local tickCount = 0
+RunService.RenderStepped:Connect(function(dt)
+	local speed = dt * 60
+	tickCount = tickCount + dt
+
+	local rgbColor = Color3.fromHSV((tickCount % 5) / 5, 1, 1)
+
+	fovDrawing.Color = rgbColor
+	for _, objects in pairs(espCache) do
+		objects.Box.Color = rgbColor
+	end
+
+	outerGradient.Rotation = (outerGradient.Rotation + 0.9 * speed) % 360
+	accentGradient.Rotation = (accentGradient.Rotation + 1.4 * speed) % 360
+	titleGradient.Rotation = (titleGradient.Rotation + 1.2 * speed) % 360
+	minimizeGradient.Rotation = (minimizeGradient.Rotation + 1.6 * speed) % 360
+
+	for _, gradient in ipairs(animatedGradients) do
+		gradient.Rotation = (gradient.Rotation + 1.8 * speed) % 360
+	end
+
+	for p, objects in pairs(espCache) do
+		if espEnabled and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+			local hrp = p.Character.HumanoidRootPart
+			local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+
+			if onScreen then
+				local scale = 1 / (pos.Z * math.tan(math.rad(Camera.FieldOfView / 2)) * 2) * 1000
+				local w, h = math.clamp(scale * 2.2, 20, 300), math.clamp(scale * 3.8, 30, 450)
+
+				objects.Box.Size = Vector2.new(w, h)
+				objects.Box.Position = Vector2.new(pos.X - w / 2, pos.Y - h / 2)
+				objects.Box.Visible = true
+
+				local distance = math.floor((hrp.Position - Camera.CFrame.Position).Magnitude)
+				objects.Text.Text = string.format("%s • GOV [%dm]", p.Name, distance)
+				objects.Text.Position = Vector2.new(pos.X, (pos.Y - h / 2) - 18)
+				objects.Text.Visible = true
+			else
+				objects.Box.Visible = false
+				objects.Text.Visible = false
+			end
+		else
+			objects.Box.Visible = false
+			objects.Text.Visible = false
+		end
+	end
+end)
+
+print("[VOID HUB] LOADED • AIMBOT & ESP ACTIVE")
